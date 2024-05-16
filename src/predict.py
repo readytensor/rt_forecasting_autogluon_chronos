@@ -66,7 +66,7 @@ def create_predictions_dataframe(
 def run_batch_predictions(
     saved_schema_dir_path: str = paths.SAVED_SCHEMA_DIR_PATH,
     model_config_file_path: str = paths.MODEL_CONFIG_FILE_PATH,
-    test_dir: str = paths.TEST_DIR,
+    train_dir: str = paths.TRAIN_DIR,
     predictor_dir_path: str = paths.PREDICTOR_DIR_PATH,
     predictions_file_path: str = paths.PREDICTIONS_FILE_PATH,
 ) -> None:
@@ -83,7 +83,7 @@ def run_batch_predictions(
     Args:
         saved_schema_dir_path (str): Dir path to the saved data schema.
         model_config_file_path (str): Path to the model configuration file.
-        test_dir (str): Directory path for the test data.
+        train_dir (str, optional): The directory path of the train data.
         pipeline_file_path (str): Path to the saved pipeline file.
         target_encoder_file_path (str): Path to the saved target encoder file.
         predictor_file_path (str): Path to the saved predictor model file.
@@ -100,13 +100,16 @@ def run_batch_predictions(
             logger.info("Loading model config...")
             model_config = read_json_as_dict(model_config_file_path)
 
+
+            # The Chronos - AutoGluon model requires the data you want to predict for the following time steps,
+            # which, in our case, is the train data.
             logger.info("Loading prediction input data...")
-            test_data = read_csv_in_directory(file_dir_path=test_dir)
+            train_data = read_csv_in_directory(file_dir_path=train_dir)
 
             # validate the data
             logger.info("Validating prediction data...")
-            validated_test_data = validate_data(
-                data=test_data, data_schema=data_schema, is_train=False
+            validated_data = validate_data(
+                data=train_data, data_schema=data_schema, is_train=False
             )
 
             logger.info("Loading predictor model...")
@@ -115,7 +118,7 @@ def run_batch_predictions(
             logger.info("Making predictions...")
             predictions = predict_with_model(
                 predictor_model,
-                validated_test_data,
+                validated_data,
                 model_config["prediction_field_name"],
             )
             logger.info("Validating predictions...")

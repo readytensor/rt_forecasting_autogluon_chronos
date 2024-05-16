@@ -12,9 +12,7 @@ from utils import (
     set_seeds,
     ResourceTracker,
 )
-
 logger = get_logger(task_name="train")
-
 
 def run_training(
     input_schema_dir: str = paths.INPUT_SCHEMA_DIR,
@@ -77,7 +75,8 @@ def run_training(
             default_hyperparameters = read_json_as_dict(
                 default_hyperparameters_file_path
             )
-        
+
+
             forecaster = train_predictor_model(
                 data_schema=data_schema,
                 train_data=validated_data,

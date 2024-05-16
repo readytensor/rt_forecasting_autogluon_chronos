@@ -28,18 +28,25 @@ class Forecaster:
     Forecaster models.
     """
 
+    """
+    Does Chronos work with covariates or features?
+        The current iteration of Chronos does not support covariates or features, 
+        however we will provide this functionality in later versions.
+        In the meanwhile, presets such as chronos_ensemble combine Chronos with models that do take advantage of features.
+    """
+
     model_name = "Chronos Forecaster - AutoGluon"
 
     def __init__(
         self,
         data_schema: ForecastingSchema,
         model_alias: str = "base",
-        num_samples: int = 20,
+        num_samples: int = 30,
         batch_size: int = 16,
         context_length: int = 512,
         optimization_strategy: str = None,
-        use_static_features: bool = False,
-        use_future_covariates: bool = True,  # called known_covariates in AutoGluon
+        use_static_features: bool = False,    # static_covariates
+        use_future_covariates: bool = False,  # called known_covariates in AutoGluon
         use_past_covariates: bool = False,
         random_state: int = 0,
         **kwargs,
@@ -118,19 +125,26 @@ class Forecaster:
             TimeSeriesDataFrame: The prepared data.
         """
 
+        if not self.use_past_covariates and set(self.data_schema.past_covariates).issubset(data.columns):
+            data = data.drop(columns=self.data_schema.past_covariates)
+
+        if not self.use_future_covariates and set(self.data_schema.future_covariates).issubset(data.columns):
+            data = data.drop(columns=self.data_schema.future_covariates)
+
         static_features_df = None
         if self.use_static_features:
             static_features_df = data[[
                 self.data_schema.id_col]+self.data_schema.static_covariates]
-            print(static_features_df.head())
-            data = data.drop(columns=self.data_schema.static_covariates)
+            static_features_df.drop_duplicates(inplace=True, ignore_index=True)
+
+        data = data.drop(columns=self.data_schema.static_covariates)
 
         prepared_data = TimeSeriesDataFrame.from_data_frame(df=data,
                                                             id_column=self.data_schema.id_col,
                                                             timestamp_column=self.data_schema.time_col,
                                                             static_features_df=static_features_df,
                                                             )
-    
+
         return prepared_data
 
     def fit(
@@ -147,7 +161,7 @@ class Forecaster:
         """
 
         """
-        Hyperparameters:
+        more Hyperparameters:
             device : str, default = None
                 Device to use for inference. If None, model will use the GPU if available. For larger model sizes
                 `small`, `base`, and `large`; inference will fail if no GPU is available.
@@ -189,11 +203,11 @@ class Forecaster:
         self._is_trained = True
 
     def predict(
-        self, test_data: pd.DataFrame, prediction_col_name: str
+        self, data: pd.DataFrame, prediction_col_name: str
     ) -> pd.DataFrame:
         """Make the forecast of given length.
         Args:
-            test_data (pd.DataFrame): Given test input for forecasting.
+            data (pd.DataFrame): Given test input for forecasting.
             prediction_col_name (str): Name to give to prediction column.
         Returns:
             pd.DataFrame: The predictions dataframe.
@@ -201,9 +215,16 @@ class Forecaster:
         if not self._is_trained:
             raise NotFittedError("Model is not fitted yet.")
 
-        pass
+        prepared_data = self._prepare_data(data)
+        predictions = self.model.predict(data=prepared_data)
 
-    def save(self, model_dir_path:str) -> None:
+        predictions.reset_index(inplace=True)
+        predictions = predictions.rename(columns={"item_id":self.data_schema.id_col,
+                                                  "timestamp":self.data_schema.time_col,
+                                                  "mean": prediction_col_name})
+        return predictions[[self.data_schema.id_col, self.data_schema.time_col, prediction_col_name]]
+
+    def save(self, model_dir_path: str) -> None:
         """Save the Forecaster to disk.
 
         Args:
@@ -256,7 +277,7 @@ def train_predictor_model(
         data_schema=data_schema,
         **hyperparameters,
     )
-    model.fit(train_data=train_data , model_dir_path=model_dir_path)
+    model.fit(train_data=train_data, model_dir_path=model_dir_path)
     return model
 
 

@@ -33,6 +33,5 @@ venv.bak/
 /tmp
 
 .DS_Store
-test.ipynb
-test.py
-darts_logs/
+
+AutogluonModels/

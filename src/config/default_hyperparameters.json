@@ -1,6 +1,11 @@
 {
-  "use_static_features": true,
-  "use_future_covariates": true,
-  "use_past_covariates": true,
+  "model_alias": "base",
+  "num_samples": 30,
+  "batch_size": 16,
+  "context_length": 512,
+  "optimization_strategy": null,
+  "use_static_features": false,
+  "use_future_covariates": false,
+  "use_past_covariates": false,
   "random_state": 0
 }
