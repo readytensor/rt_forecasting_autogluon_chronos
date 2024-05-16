@@ -31,7 +31,7 @@ class Forecaster:
     """
     Does Chronos work with covariates or features?
         The current iteration of Chronos does not support covariates or features, 
-        however we will provide this functionality in later versions.
+        however this functionality will be provided in later versions.
         In the meanwhile, presets such as chronos_ensemble combine Chronos with models that do take advantage of features.
     """
 
@@ -90,7 +90,7 @@ class Forecaster:
                 Sets the underlying random seed at model initialization time.
 
             **kwargs:
-                Optional arguments to initialize the pytorch_lightning.Module, pytorch_lightning.Trainer, and Darts' TorchForecastingModel.
+                Optional arguments.
         """
         self.data_schema = data_schema
         self.model_alias = model_alias
