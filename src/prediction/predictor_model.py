@@ -185,6 +185,7 @@ class Forecaster:
                                          target=self.data_schema.target,
                                          prediction_length=self.data_schema.forecast_length,
                                          known_covariates_names=future_covariates,
+                                         cache_predictions=False,
                                          ).fit(
             train_data=prepared_data,
             hyperparameters={
@@ -216,7 +217,7 @@ class Forecaster:
             raise NotFittedError("Model is not fitted yet.")
 
         prepared_data = self._prepare_data(data)
-        predictions = self.model.predict(data=prepared_data)
+        predictions = self.model.predict(data=prepared_data,use_cache=False)
 
         predictions.reset_index(inplace=True)
         predictions = predictions.rename(columns={"item_id":self.data_schema.id_col,
