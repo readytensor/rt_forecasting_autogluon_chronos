@@ -32,6 +32,9 @@ ENV PYTHONDONTWRITEBYTECODE=TRUE
 ENV PATH="/opt/app:${PATH}"
 
 
+RUN mkdir -p /opt/src/.cache/huggingface && chmod -R 777 /opt/src/.cache
+ENV TRANSFORMERS_CACHE=/opt/src/.cache/huggingface
+
 # set non-root user
 USER 1000
 # set entrypoint
