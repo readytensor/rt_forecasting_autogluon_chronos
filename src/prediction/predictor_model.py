@@ -300,7 +300,6 @@ def predict_with_model(
     Args:
         model (Forecaster): The Forecaster model.
         train_data (pd.DataFrame): The train input data for forecasting used to do prediction.
-        test_data (pd.DataFrame): The test input data for forecasting used to get the correct timestamps.
         prediction_col_name (int): Name to give to prediction column.
 
     Returns:

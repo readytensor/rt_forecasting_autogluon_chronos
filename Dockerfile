@@ -8,7 +8,7 @@ RUN apt-get -y update && apt-get install -y --no-install-recommends \
 
 # install python and pip and add symbolic link to python3
 RUN apt-get -y update && apt-get install -y --no-install-recommends \
-    python3.9 \
+    python3.11 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/python3 /usr/bin/python
