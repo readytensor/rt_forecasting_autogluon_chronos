@@ -100,7 +100,7 @@ class ForecastingSchema:
         Gets the frequency of the data.
 
         Returns:
-            str: The frequency of the day.
+            str: The frequency of the timestamp.
         """
         return str(self.schema["frequency"])
 
@@ -136,7 +136,8 @@ class ForecastingSchema:
         if len(self.schema["pastCovariates"]) == 0:
             return []
         fields = self.schema["pastCovariates"]
-        past_covariates = [f["name"] for f in fields if f["dataType"] == "NUMERIC"]
+        past_covariates = [f["name"]
+                           for f in fields if f["dataType"] == "NUMERIC"]
         return past_covariates
 
     @property
@@ -161,7 +162,8 @@ class ForecastingSchema:
         if len(self.schema["futureCovariates"]) == 0:
             return []
         fields = self.schema["futureCovariates"]
-        future_covariates = [f["name"] for f in fields if f["dataType"] == "NUMERIC"]
+        future_covariates = [f["name"]
+                             for f in fields if f["dataType"] == "NUMERIC"]
         return future_covariates
 
     @property
@@ -186,7 +188,8 @@ class ForecastingSchema:
         if len(self.schema["staticCovariates"]) == 0:
             return []
         fields = self.schema["staticCovariates"]
-        static_covariates = [f["name"] for f in fields if f["dataType"] == "NUMERIC"]
+        static_covariates = [f["name"]
+                             for f in fields if f["dataType"] == "NUMERIC"]
         return static_covariates
 
     @property
@@ -255,7 +258,7 @@ class ForecastingSchema:
         Gets the data type of the time field.
 
         Returns:
-            str: The data type of the ID field.
+            str: The data type of the timeField field.
         """
         if "timeField" not in self.schema:
             return None
@@ -267,7 +270,7 @@ class ForecastingSchema:
         Gets the description for the ID field.
 
         Returns:
-            str: The description for the ID field.
+            str: The description for the timeField field.
         """
         if "timeField" not in self.schema:
             return "No time field specified in schema"
@@ -343,7 +346,8 @@ class ForecastingSchema:
         for covariate in covariates:
             if covariate["name"] == covariate_name:
                 return covariate
-        raise ValueError(f"covariate '{covariate_name}' not found in the schema.")
+        raise ValueError(
+            f"covariate '{covariate_name}' not found in the schema.")
 
 
 def load_json_data_schema(schema_dir_path: str) -> ForecastingSchema:

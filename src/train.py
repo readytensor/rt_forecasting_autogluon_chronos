@@ -14,6 +14,7 @@ from utils import (
 )
 logger = get_logger(task_name="train")
 
+
 def run_training(
     input_schema_dir: str = paths.INPUT_SCHEMA_DIR,
     saved_schema_dir_path: str = paths.SAVED_SCHEMA_DIR_PATH,
@@ -50,7 +51,8 @@ def run_training(
             # load and save schema
             logger.info("Loading and saving schema...")
             data_schema = load_json_data_schema(input_schema_dir)
-            save_schema(schema=data_schema, save_dir_path=saved_schema_dir_path)
+            save_schema(schema=data_schema,
+                        save_dir_path=saved_schema_dir_path)
 
             # load model config
             logger.info("Loading model config...")
@@ -76,14 +78,12 @@ def run_training(
                 default_hyperparameters_file_path
             )
 
-
             forecaster = train_predictor_model(
                 data_schema=data_schema,
                 train_data=validated_data,
                 hyperparameters=default_hyperparameters,
-                model_dir_path = predictor_dir_path,
+                model_dir_path=predictor_dir_path,
             )
-
 
         # save predictor model
         logger.info("Saving forecaster...")
@@ -96,7 +96,8 @@ def run_training(
         # Log the error
         logger.error(f"{err_msg} Error: {str(exc)}")
         # Log the error to the separate logging file
-        log_error(message=err_msg, error=exc, error_fpath=paths.TRAIN_ERROR_FILE_PATH)
+        log_error(message=err_msg, error=exc,
+                  error_fpath=paths.TRAIN_ERROR_FILE_PATH)
         # re-raise the error
         raise Exception(f"{err_msg} Error: {str(exc)}") from exc
 

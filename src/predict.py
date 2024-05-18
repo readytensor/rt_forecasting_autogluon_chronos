@@ -58,7 +58,8 @@ def create_predictions_dataframe(
     predictions_df.insert(0, id_field_name, ids)
     if return_probs:
         return predictions_df
-    predictions_df[prediction_field_name] = predictions_df[class_names].idxmax(axis=1)
+    predictions_df[prediction_field_name] = predictions_df[class_names].idxmax(
+        axis=1)
     predictions_df.drop(class_names, axis=1, inplace=True)
     return predictions_df
 
@@ -100,7 +101,6 @@ def run_batch_predictions(
             logger.info("Loading model config...")
             model_config = read_json_as_dict(model_config_file_path)
 
-
             # The Chronos - AutoGluon model requires the data you want to predict for the following time steps,
             # which, in our case, is the train data.
             logger.info("Loading prediction input data...")
@@ -108,8 +108,8 @@ def run_batch_predictions(
 
             # validate the data
             logger.info("Validating prediction data...")
-            validated_data = validate_data(
-                data=train_data, data_schema=data_schema, is_train=False
+            validated_train_data = validate_data(
+                data=train_data, data_schema=data_schema, is_train=True
             )
 
             logger.info("Loading predictor model...")
@@ -117,9 +117,9 @@ def run_batch_predictions(
 
             logger.info("Making predictions...")
             predictions = predict_with_model(
-                predictor_model,
-                validated_data,
-                model_config["prediction_field_name"],
+                model=predictor_model,
+                train_data=validated_train_data,
+                prediction_col_name=model_config["prediction_field_name"],
             )
             logger.info("Validating predictions...")
             validated_predictions = validate_predictions(
@@ -138,7 +138,8 @@ def run_batch_predictions(
         # Log the error
         logger.error(f"{err_msg} Error: {str(exc)}")
         # Log the error to the separate logging file
-        log_error(message=err_msg, error=exc, error_fpath=paths.PREDICT_ERROR_FILE_PATH)
+        log_error(message=err_msg, error=exc,
+                  error_fpath=paths.PREDICT_ERROR_FILE_PATH)
         # re-raise the error
         raise Exception(f"{err_msg} Error: {str(exc)}") from exc
 

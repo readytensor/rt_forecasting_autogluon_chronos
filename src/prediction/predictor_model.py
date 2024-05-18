@@ -204,11 +204,11 @@ class Forecaster:
         self._is_trained = True
 
     def predict(
-        self, data: pd.DataFrame, prediction_col_name: str
+        self, train_data: pd.DataFrame, prediction_col_name: str
     ) -> pd.DataFrame:
         """Make the forecast of given length.
         Args:
-            data (pd.DataFrame): Given test input for forecasting.
+            train_data (pd.DataFrame): Given test input for forecasting.
             prediction_col_name (str): Name to give to prediction column.
         Returns:
             pd.DataFrame: The predictions dataframe.
@@ -216,13 +216,22 @@ class Forecaster:
         if not self._is_trained:
             raise NotFittedError("Model is not fitted yet.")
 
-        prepared_data = self._prepare_data(data)
-        predictions = self.model.predict(data=prepared_data,use_cache=False)
-
+        prepared_data = self._prepare_data(train_data)
+        predictions = self.model.predict(data=prepared_data, use_cache=False)
         predictions.reset_index(inplace=True)
-        predictions = predictions.rename(columns={"item_id":self.data_schema.id_col,
-                                                  "timestamp":self.data_schema.time_col,
+
+        predictions = predictions.rename(columns={"item_id": self.data_schema.id_col,
+                                                  "timestamp": self.data_schema.time_col,
                                                   "mean": prediction_col_name})
+
+        if self.data_schema.time_col_dtype in ["INT", "OTHER"]:
+            last_timestamp = train_data[self.data_schema.time_col].max()
+            new_timestamps = np.arange(
+                last_timestamp + 1, last_timestamp + 1 + self.data_schema.forecast_length
+            )
+            predictions[self.data_schema.time_col] = np.tile(
+                new_timestamps, predictions[self.data_schema.id_col].nunique())
+
         return predictions[[self.data_schema.id_col, self.data_schema.time_col, prediction_col_name]]
 
     def save(self, model_dir_path: str) -> None:
@@ -283,20 +292,21 @@ def train_predictor_model(
 
 
 def predict_with_model(
-    model: Forecaster, test_data: pd.DataFrame, prediction_col_name: str
+    model: Forecaster, train_data: pd.DataFrame, prediction_col_name: str
 ) -> pd.DataFrame:
     """
     Make forecast.
 
     Args:
         model (Forecaster): The Forecaster model.
-        test_data (pd.DataFrame): The test input data for forecasting.
+        train_data (pd.DataFrame): The train input data for forecasting used to do prediction.
+        test_data (pd.DataFrame): The test input data for forecasting used to get the correct timestamps.
         prediction_col_name (int): Name to give to prediction column.
 
     Returns:
         pd.DataFrame: The forecast.
     """
-    return model.predict(test_data, prediction_col_name)
+    return model.predict(train_data, prediction_col_name)
 
 
 def save_predictor_model(model: Forecaster, predictor_dir_path: str) -> None:
