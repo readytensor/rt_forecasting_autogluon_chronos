@@ -1,4 +1,5 @@
 import os
+from typing import Union
 import warnings
 import joblib
 import numpy as np
@@ -146,6 +147,19 @@ class Forecaster:
                                                             )
 
         return prepared_data
+    
+    def _prepare_freq(self) -> Union[str|None]:
+        freq_dict = {"YEARLY": "y",
+                     "QUARTERLY": "q",
+                     "MONTHLY": "m",
+                     "WEEKLY": "w",
+                     "DAILY": "d",
+                     "HOURLY": "h",
+                     "OTHER": None}
+        
+        f = self.data_schema.frequency.split(".")[1]
+        return freq_dict[f]
+
 
     def fit(
         self,
@@ -181,11 +195,14 @@ class Forecaster:
         if self.use_future_covariates:
             future_covariates = self.data_schema.future_covariates
 
+        f = self._prepare_freq()
+
         self.model = TimeSeriesPredictor(path=os.path.join(model_dir_path, MODEL_FILE_NAME),
                                          target=self.data_schema.target,
                                          prediction_length=self.data_schema.forecast_length,
                                          known_covariates_names=future_covariates,
                                          cache_predictions=False,
+                                         freq=f,
                                          ).fit(
             train_data=prepared_data,
             hyperparameters={
@@ -300,7 +317,6 @@ def predict_with_model(
     Args:
         model (Forecaster): The Forecaster model.
         train_data (pd.DataFrame): The train input data for forecasting used to do prediction.
-        test_data (pd.DataFrame): The test input data for forecasting used to get the correct timestamps.
         prediction_col_name (int): Name to give to prediction column.
 
     Returns:
