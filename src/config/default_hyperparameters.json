@@ -1,6 +1,6 @@
 {
-  "model_alias": "base",
-  "num_samples": 20,
+  "model_alias": "small",
+  "num_samples": 30,
   "batch_size": 16,
   "context_length": 512,
   "optimization_strategy": null,
