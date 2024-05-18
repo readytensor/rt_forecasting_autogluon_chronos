@@ -148,7 +148,7 @@ class Forecaster:
 
         return prepared_data
     
-    def _prepare_freq(self) -> Union[str, None]:
+    def _prepare_freq(self) -> Union[str|None]:
         freq_dict = {"YEARLY": "y",
                      "QUARTERLY": "q",
                      "MONTHLY": "m",
