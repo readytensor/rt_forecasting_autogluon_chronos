@@ -1,4 +1,4 @@
-# Time-series Chronos Forecaster Model - AutoGluon
+# Chronos Time-series Forecaster Model - AutoGluon
 
 Chronos Forecaster for the Forecasting problem category as per Ready Tensor specifications.
 
