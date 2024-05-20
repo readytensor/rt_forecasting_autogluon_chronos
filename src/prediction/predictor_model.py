@@ -6,10 +6,7 @@ import pandas as pd
 from schema.data_schema import ForecastingSchema
 from autogluon.timeseries import TimeSeriesDataFrame, TimeSeriesPredictor
 from sklearn.exceptions import NotFittedError
-from torch import cuda
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from logger import get_logger
-from torch import cuda
 
 
 warnings.filterwarnings("ignore")
