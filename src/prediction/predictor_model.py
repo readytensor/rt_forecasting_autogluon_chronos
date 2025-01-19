@@ -1,13 +1,13 @@
 import os
 import warnings
 import joblib
+import torch
 import numpy as np
 import pandas as pd
 from schema.data_schema import ForecastingSchema
 from autogluon.timeseries import TimeSeriesDataFrame, TimeSeriesPredictor
 from sklearn.exceptions import NotFittedError
 from logger import get_logger
-
 
 warnings.filterwarnings("ignore")
 
@@ -37,12 +37,12 @@ class Forecaster:
     def __init__(
         self,
         data_schema: ForecastingSchema,
-        model_alias: str = "base",
-        num_samples: int = 30,
-        batch_size: int = 16,
-        context_length: int = 512,
+        model_alias: str = "bolt_base",
+        num_samples: int = 30,  # replaced by more suitable sampling strategies in the new model framework
+        batch_size: int = 32,
+        context_length: int = 2048,
         optimization_strategy: str = None,
-        use_static_features: bool = False,    # static_covariates
+        use_static_features: bool = False,  # static_covariates
         use_future_covariates: bool = False,  # called known_covariates in AutoGluon
         use_past_covariates: bool = False,
         random_state: int = 0,
@@ -71,7 +71,7 @@ class Forecaster:
 
             optimization_strategy (str):
                 Optimization strategy to use for inference on CPUs. If None, the model will use the default implementation.
-                If `onnx`, the model will be converted to ONNX and the inference will be performed using ONNX. If ``openvino``,
+                If onnx, the model will be converted to ONNX and the inference will be performed using ONNX. If `openvino,
                 inference will be performed with the model compiled to OpenVINO.
 
             use_static_features (bool):
@@ -122,77 +122,67 @@ class Forecaster:
             TimeSeriesDataFrame: The prepared data.
         """
 
-        if not self.use_past_covariates and set(self.data_schema.past_covariates).issubset(data.columns):
+        if not self.use_past_covariates and set(
+            self.data_schema.past_covariates
+        ).issubset(data.columns):
             data = data.drop(columns=self.data_schema.past_covariates)
 
-        if not self.use_future_covariates and set(self.data_schema.future_covariates).issubset(data.columns):
+        if not self.use_future_covariates and set(
+            self.data_schema.future_covariates
+        ).issubset(data.columns):
             data = data.drop(columns=self.data_schema.future_covariates)
 
         static_features_df = None
         if self.use_static_features:
-            static_features_df = data[[
-                self.data_schema.id_col]+self.data_schema.static_covariates]
+            static_features_df = data[
+                [self.data_schema.id_col] + self.data_schema.static_covariates
+            ]
             static_features_df.drop_duplicates(inplace=True, ignore_index=True)
 
         data = data.drop(columns=self.data_schema.static_covariates)
 
-        prepared_data = TimeSeriesDataFrame.from_data_frame(df=data,
-                                                            id_column=self.data_schema.id_col,
-                                                            timestamp_column=self.data_schema.time_col,
-                                                            static_features_df=static_features_df,
-                                                            )
+        prepared_data = TimeSeriesDataFrame.from_data_frame(
+            df=data,
+            id_column=self.data_schema.id_col,
+            timestamp_column=self.data_schema.time_col,
+            static_features_df=static_features_df,
+        )
 
         return prepared_data
 
-    def fit(
-        self,
-        train_data: pd.DataFrame,
-        model_dir_path: str
-    ) -> None:
+    def fit(self, train_data: pd.DataFrame, model_dir_path: str) -> None:
         """Fit the Forecaster model.
-        A Chronos model is a pre-trained model, Fitting is mainly to set the model.
+        A Chronos-Bolt model is a pre-trained model, Fitting is mainly to set the model.
 
         Args:
             train_data (pd.DataFrame): Training data.
-
         """
 
-        """
-        more Hyperparameters:
-            device : str, default = None
-                Device to use for inference. If None, model will use the GPU if available. For larger model sizes
-                `small`, `base`, and `large`; inference will fail if no GPU is available.
-
-            torch_dtype : torch.dtype or {"auto", "bfloat16", "float32", "float64"}, default = "auto"
-                Torch data type for model weights, provided to ``from_pretrained`` method of Hugging Face AutoModels. If
-                original Chronos models are specified and the model size is ``small``, ``base``, or ``large``, the
-                ``torch_dtype`` will be set to ``bfloat16`` to enable inference on GPUs.
-
-            data_loader_num_workers : int, default = 0
-                Number of worker processes to be used in the data loader. See documentation on ``torch.utils.data.DataLoader``
-                for more information.
-        """
+        # Prepare data
         prepared_data = self._prepare_data(train_data)
 
         future_covariates = None
         if self.use_future_covariates:
             future_covariates = self.data_schema.future_covariates
 
-        self.model = TimeSeriesPredictor(path=os.path.join(model_dir_path, MODEL_FILE_NAME),
-                                         target=self.data_schema.target,
-                                         prediction_length=self.data_schema.forecast_length,
-                                         known_covariates_names=future_covariates,
-                                         cache_predictions=False,
-                                         ).fit(
+        # Update model fitting with Chronos-Bolt
+        self.model = TimeSeriesPredictor(
+            path=os.path.join(model_dir_path, MODEL_FILE_NAME),
+            target=self.data_schema.target,
+            prediction_length=self.data_schema.forecast_length,
+            known_covariates_names=future_covariates,
+            cache_predictions=False,
+        ).fit(
             train_data=prepared_data,
             hyperparameters={
                 "Chronos": {
                     "model_path": self.model_alias,
                     "batch_size": self.batch_size,
-                    "num_samples": self.num_samples,
                     "context_length": self.context_length,
                     "optimization_strategy": self.optimization_strategy,
                     "random_seed": self.random_state,
+                    "torch_dtype": "auto",  # Defaulting to auto, adjust if needed
+                    "device": ("cuda" if torch.cuda.is_available() else "cpu"),
                 }
             },
             skip_model_selection=True,
@@ -203,10 +193,12 @@ class Forecaster:
     def predict(
         self, train_data: pd.DataFrame, prediction_col_name: str
     ) -> pd.DataFrame:
-        """Make the forecast of given length.
+        """Make the forecast of the given length.
+
         Args:
             train_data (pd.DataFrame): Given test input for forecasting.
             prediction_col_name (str): Name to give to prediction column.
+
         Returns:
             pd.DataFrame: The predictions dataframe.
         """
@@ -217,19 +209,27 @@ class Forecaster:
         predictions = self.model.predict(data=prepared_data, use_cache=False)
         predictions.reset_index(inplace=True)
 
-        predictions = predictions.rename(columns={"item_id": self.data_schema.id_col,
-                                                  "timestamp": self.data_schema.time_col,
-                                                  "mean": prediction_col_name})
+        predictions = predictions.rename(
+            columns={
+                "item_id": self.data_schema.id_col,
+                "timestamp": self.data_schema.time_col,
+                "mean": prediction_col_name,
+            }
+        )
 
         if self.data_schema.time_col_dtype in ["INT", "OTHER"]:
             last_timestamp = train_data[self.data_schema.time_col].max()
             new_timestamps = np.arange(
-                last_timestamp + 1, last_timestamp + 1 + self.data_schema.forecast_length
+                last_timestamp + 1,
+                last_timestamp + 1 + self.data_schema.forecast_length,
             )
             predictions[self.data_schema.time_col] = np.tile(
-                new_timestamps, predictions[self.data_schema.id_col].nunique())
+                new_timestamps, predictions[self.data_schema.id_col].nunique()
+            )
 
-        return predictions[[self.data_schema.id_col, self.data_schema.time_col, prediction_col_name]]
+        return predictions[
+            [self.data_schema.id_col, self.data_schema.time_col, prediction_col_name]
+        ]
 
     def save(self, model_dir_path: str) -> None:
         """Save the Forecaster to disk.
@@ -242,7 +242,7 @@ class Forecaster:
         self.model.save()
         joblib.dump(self, os.path.join(model_dir_path, PREDICTOR_FILE_NAME))
 
-    @ classmethod
+    @classmethod
     def load(cls, model_dir_path: str) -> "Forecaster":
         """Load the Forecaster from disk.
 
@@ -251,10 +251,8 @@ class Forecaster:
         Returns:
             Forecaster: A new instance of the loaded Forecaster.
         """
-        forecaster = joblib.load(os.path.join(
-            model_dir_path, PREDICTOR_FILE_NAME))
-        model = TimeSeriesPredictor.load(
-            os.path.join(model_dir_path, MODEL_FILE_NAME))
+        forecaster = joblib.load(os.path.join(model_dir_path, PREDICTOR_FILE_NAME))
+        model = TimeSeriesPredictor.load(os.path.join(model_dir_path, MODEL_FILE_NAME))
         forecaster.model = model
         return forecaster
 

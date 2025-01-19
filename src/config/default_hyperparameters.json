@@ -1,5 +1,5 @@
 {
-  "model_alias": "base",
+  "model_alias": "bolt_base",
   "num_samples": 30,
   "batch_size": 16,
   "context_length": 512,
